@@ -45,7 +45,7 @@ static ssize_t led_write(struct file *filp, const char __user *buf,
 	{
 
 		/* set gpa14 to let led off */
-		*GPIOA_BSRR = (1<<30);
+		*GPIOA_BSRR = (1<<14);
 	}
 	return 1;
 }

@@ -35,6 +35,7 @@ modules.builtin
 *.gcno
 *.ko
 *.symvers
+*.mod
 
 
 #
@@ -84,3 +85,4 @@ GTAGS
 *.orig
 *~
 \#*#
+
