@@ -26,7 +26,7 @@ PWD := $(shell pwd)
 
 default:
 	# $(MAKE) -C $(KERNEL_DIR) M=$(PWD) modules
-	$(CC) timelist.c -o timelist
+	$(CC) timelist.c -o send.out
         
 install:
 	$(MAKE) -C $(KERNEL_DIR) M=$(PWD) INSTALL_MOD_PATH=$(DESTDIR) modules_install

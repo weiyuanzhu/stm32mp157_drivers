@@ -7,8 +7,25 @@
 #include <string.h>
 #include <stdlib.h>
 
-#define MAX_SIZE 60
-#define OVERFLOW_VAL 65535
+#define TIMING_LIST_SIZE 120
+#define OVERFLOW_VAL 65536
+
+enum
+{
+    TYPE_NOTHING,                       // Nothing to do
+    TYPE_PING,                          // Ask for a reply in order to test the communication
+    TYPE_DALI_COMMAND,                  // Send command on the DALI bus
+    TYPE_STATE_QUERY,                   // [DEBUG] Ask the DALI state machine what state it's in
+    TYPE_DALI_COMMAND_SEQUENCE,         // Send group of commands on the DALI bus
+    TYPE_PING_DELAY,                    // Ask the device for a delayed reply (for accurate PC application timing)
+    TYPE_SEND_DATA_TIMING_LIST,         // Send arbitrary waveform on the DALI bus
+    TYPE_RESET_TIMING_LIST,             // Prepare to load arbitrary waveform data
+    TYPE_LOAD_DATA_TIMING_LIST,         // Load arbitrary waveform data
+    TYPE_SET_RECEIVE_TIMING_LIST,       // Enable/Disable waveform capture vs. decoded protocol
+    TYPE_READ_FLAGS,                    // [DEBUG] Read DALI state machine flags
+    TYPE_ENABLE_DEBUG_PACKETS,          // Enable/Disable the reception of debug data (state transitions)
+    TYPE_GET_FW_VERSION                 // Request firmware version
+};
 
 int main(int argc, char **argv)
 {
@@ -16,9 +33,31 @@ int main(int argc, char **argv)
     const char *deviceFile = "/dev/ttyRPMSG0";
     const char *timingListFile = "./timingList.txt";
     char lineBuffer[256];
-    long timeArray[MAX_SIZE] = {0xFFFF};
+    long timeArray[TIMING_LIST_SIZE] = {0xFFFF};
     int counter = 0;
-    unsigned char txBuffer[120] = {0x00};
+    unsigned char txBuffer[256] = {[0 ... 255] = 0xFF};
+
+    printf("argc: %d, %s, %s\r\n", argc, argv[0], argv[1]);;
+    if(argc < 2) {
+        printf("usage: send <cmd id> \r\n");
+        printf("0 - TYPE_NOTHING \r\n");
+        printf("1 - TYPE_PING \r\n");
+        printf("2 - TYPE_DALI_COMMAND \r\n");
+        printf("3 - TYPE_STATE_QUERY \r\n");
+        printf("4 - TYPE_DALI_COMMAND_SEQUENCE \r\n");
+        printf("5 - TYPE_PING_DELAY \r\n");
+        printf("6 - TYPE_SEND_DATA_TIMING_LIST \r\n");
+        printf("7 - TYPE_RESET_TIMING_LIST \r\n");
+        printf("8 - TYPE_LOAD_DATA_TIMING_LIST \r\n");
+        printf("9 - TYPE_SET_RECEIVE_TIMING_LIST \r\n");
+        printf("10 - TYPE_READ_FLAGS \r\n");
+        printf("11 - TYPE_ENABLE_DEBUG_PACKETS \r\n");
+        printf("12 - TYPE_GET_FW_VERSION \r\n");
+        return 1;
+    } 
+
+    int cmd = atoi(argv[1]);
+    txBuffer[0] = (char)cmd;
 
     // Open the device file for writing
     int ttyRPMSG0 = open(deviceFile, O_WRONLY);
@@ -48,7 +87,7 @@ int main(int argc, char **argv)
     token = strtok(lineBuffer, delimiter);
     while (token != NULL)
     {
-        printf("token: %s, ", token);
+        // printf("token: %s, ", token);
         char *endptr;
         long result = strtol(token, &endptr, 10);
 
@@ -60,19 +99,17 @@ int main(int argc, char **argv)
         }
         else
         {
-            if (counter < MAX_SIZE)
+            if (counter < TIMING_LIST_SIZE)
             {
-                printf("Converted integer: %ld\n", result);
+                // printf("Converted integer: %ld\n", result);
                 timeArray[counter] = OVERFLOW_VAL - result * 3; // 16 bit TE timer running at 3MHz,
-                txBuffer[counter * 2 + 2] = (unsigned char)(timeArray[counter]);
-                // printf("counter + 2: %d\n", (unsigned char)(timeArray[counter]));
                 txBuffer[counter * 2 + 1] = (unsigned char)(timeArray[counter] >> 8);
-                // printf("counter + 1: %d\n", (unsigned char)(timeArray[counter] >> 8));
+                txBuffer[counter * 2 + 2] = (unsigned char)(timeArray[counter]);
                 counter++;
             }
             else
             {
-                printf("number more than MAX_SIZE(%d)\r\n", MAX_SIZE);
+                printf("number more than MAX_SIZE(%d)\r\n", TIMING_LIST_SIZE);
             }
 
             // Print the result
@@ -81,9 +118,10 @@ int main(int argc, char **argv)
         token = strtok(NULL, delimiter);
     }
 
+
     // Char buffer to be sent
 
-    printf("[");
+    printf("[ ");
     for (int i = 0; i < counter; i++)
     {
         printf("%d ", timeArray[i]);
@@ -91,15 +129,14 @@ int main(int argc, char **argv)
 
     printf("]\r\n");
 
-    txBuffer[0] = 123;
-    for (int i = 0; i < 120; i++)
+    for (int i = 0; i < 3 + counter * 2; i++)
     {
         printf("%d ", txBuffer[i]);
     }
 
-    printf("counter: %d, txBuffer size: %d\r\n", counter, (1 + counter * 2));
+    printf("\r\ncounter: %d, txBuffer size: %d\r\n", counter, (1 + counter * 2));
     // Write the buffer to the device file
-    ssize_t bytesWritten = write(ttyRPMSG0, txBuffer, (1 + counter * 2));
+    ssize_t bytesWritten = write(ttyRPMSG0, txBuffer, (3 + counter * 2));  // first byte, + 2 * 0xFF stop bytes
 
     // Check for errors in writing to the file
     if (bytesWritten == -1)
