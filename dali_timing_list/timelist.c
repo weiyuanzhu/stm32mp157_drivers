@@ -27,6 +27,27 @@ enum
     TYPE_GET_FW_VERSION           // Request firmware version
 };
 
+int charToDigit(char ch)
+{
+    if (ch >= '0' && ch <= '9')
+    {
+        return ch - '0';
+    }
+    else if (ch >= 'A' && ch <= 'F')
+    {
+        return ch - 'A' + 10;
+    }
+    else if (ch >= 'a' && ch <= 'f')
+    {
+        return ch - 'a' + 10;
+    }
+    else
+    {
+        // Handle invalid input
+        return -1; // or any suitable error code
+    }
+}
+
 int main(int argc, char **argv)
 {
     // Specify the device file
@@ -40,7 +61,8 @@ int main(int argc, char **argv)
 
     // print args
     printf("argc: %d\r\n", argc);
-    for(int i = 0; i < argc; i++) {
+    for (int i = 0; i < argc; i++)
+    {
         printf("arg[%d]: %s\r\n", i, argv[i]);
     }
 
@@ -49,7 +71,7 @@ int main(int argc, char **argv)
         printf("usage: send <cmd id> [filename]\r\n");
         printf("0 - TYPE_NOTHING \r\n");
         printf("1 - TYPE_PING \r\n");
-        printf("2 - TYPE_DALI_COMMAND \r\n");                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
+        printf("2 - TYPE_DALI_COMMAND \r\n");
         printf("3 - TYPE_STATE_QUERY \r\n");
         printf("4 - TYPE_DALI_COMMAND_SEQUENCE \r\n");
         printf("5 - TYPE_PING_DELAY \r\n");
@@ -60,7 +82,7 @@ int main(int argc, char **argv)
         printf("10 - TYPE_READ_FLAGS \r\n");
         printf("11 - TYPE_ENABLE_DEBUG_PACKETS \r\n");
         printf("12 - TYPE_GET_FW_VERSION \r\n");
-        return 1;
+        return -1;
     }
 
     int cmd = atoi(argv[1]);
@@ -68,11 +90,40 @@ int main(int argc, char **argv)
 
     switch (cmd)
     {
-    case 8:
+    case TYPE_DALI_COMMAND:
+        if (argc < 4)
+        {
+            printf("TYPE_DALI_COMMAND Usage: send.out 2 ADDR(hex) VAL(hex)\r\nexample: ./send.out 2 FF 91\r\n");
+            return -1;
+        }
+        counter = 0;
+        int res[2];
+        char addr = '0';
+        char val = '0';
+        for (int i = 0; i < 2; i++)
+        {
+            res[i] = charToDigit(argv[2][i]);
+            
+        }
+        addr = res[0] << 4 | res[1];
+
+        for (int i = 0; i < 2; i++)
+        {
+            res[i] = charToDigit(argv[3][i]);
+            
+        }
+        val = res[0] << 4 | res[1];
+
+        printf("addr: %d, val: %d\r\n", addr, val);
+        txBuffer[counter * 2 + 1] = addr;
+        txBuffer[counter * 2 + 2] = val;
+        counter = 1;
+        break;
+    case TYPE_LOAD_DATA_TIMING_LIST:
         if (argc == 2)
         {
             printf("please select a file to load timing list, example: ./send.out 8 ./test.txt\r\n");
-            return 1;
+            return -1;
         }
         else
         {
@@ -81,7 +132,7 @@ int main(int argc, char **argv)
             if (file == NULL)
             {
                 printf("Error opening timing file: %s\r\n", timingListFile);
-                return 1;
+                return -1;
             }
 
             // read time list file
@@ -90,7 +141,6 @@ int main(int argc, char **argv)
                 printf("line: %s\r\n", lineBuffer);
             }
 
-            
             char *token;
             token = strtok(lineBuffer, delimiter);
             while (token != NULL)
@@ -99,7 +149,7 @@ int main(int argc, char **argv)
                 char *endptr;
                 long result = strtol(token, &endptr, 10);
 
-                //Check for errors
+                // Check for errors
                 if (*endptr != '\0')
                 {
                     printf("Conversion error: Not a valid integer: %s\n", token);
@@ -147,7 +197,7 @@ int main(int argc, char **argv)
     if (ttyRPMSG0 == -1)
     {
         perror("Error opening ttyRPMSG0");
-        return 1;
+        return -1;
     }
 
     printf("\r\ncounter: %d, txBuffer size: %d\r\n", counter, (1 + counter * 2));
@@ -164,7 +214,7 @@ int main(int argc, char **argv)
     {
         perror("Error writing to device file");
         close(ttyRPMSG0);
-        return 1;
+        return -1;
     }
 
     // Close the device file
