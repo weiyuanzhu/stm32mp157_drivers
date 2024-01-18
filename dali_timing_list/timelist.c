@@ -30,21 +30,26 @@ enum
 int main(int argc, char **argv)
 {
     // Specify the device file
+    const char delimiter[] = ";";
     const char *deviceFile = "/dev/ttyRPMSG0";
-    char *timingListFile = "./timingList.txt";
-    char lineBuffer[256];
+    char *timingListFile = "./dafult.txt";
+    char lineBuffer[1024];
     long timeArray[TIMING_LIST_SIZE] = {0xFFFF};
-    int counter = 0;
     unsigned char txBuffer[256] = {[0 ... 255] = 0xFF};
+    int counter = 0;
 
-    printf("argc: %d, %s, %s\r\n", argc, argv[0], argv[1]);
+    // print args
+    printf("argc: %d\r\n", argc);
+    for(int i = 0; i < argc; i++) {
+        printf("arg[%d]: %s\r\n", i, argv[i]);
+    }
 
     if (argc < 2)
     {
         printf("usage: send <cmd id> [filename]\r\n");
         printf("0 - TYPE_NOTHING \r\n");
         printf("1 - TYPE_PING \r\n");
-        printf("2 - TYPE_DALI_COMMAND \r\n");
+        printf("2 - TYPE_DALI_COMMAND \r\n");                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             
         printf("3 - TYPE_STATE_QUERY \r\n");
         printf("4 - TYPE_DALI_COMMAND_SEQUENCE \r\n");
         printf("5 - TYPE_PING_DELAY \r\n");
@@ -82,10 +87,10 @@ int main(int argc, char **argv)
             // read time list file
             if (fgets(lineBuffer, sizeof(lineBuffer), file) != NULL)
             {
-                printf("Timing list fist line: %s\r\n", lineBuffer);
+                printf("line: %s\r\n", lineBuffer);
             }
 
-            const char delimiter[] = ";";
+            
             char *token;
             token = strtok(lineBuffer, delimiter);
             while (token != NULL)
@@ -94,11 +99,10 @@ int main(int argc, char **argv)
                 char *endptr;
                 long result = strtol(token, &endptr, 10);
 
-                // Check for errors
+                //Check for errors
                 if (*endptr != '\0')
                 {
                     printf("Conversion error: Not a valid integer: %s\n", token);
-                    return 1;
                 }
                 else
                 {
