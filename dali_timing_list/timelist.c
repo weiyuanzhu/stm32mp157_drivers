@@ -135,25 +135,27 @@ int main(int argc, char **argv)
         int numOfCmd = atoi(argv[2]);
         txBuffer[1] = (char)numOfCmd;
 
-        for (int i = 0; i < 2; i++)
-        {
-            res[i] = charToDigit(argv[3][i]);
-        }
-        delay = res[0] << 4 | res[1];
-        for (int i = 0; i < 2; i++)
-        {
-            res[i] = charToDigit(argv[4][i]);
-        }
-        addr = res[0] << 4 | res[1];
+        for(int j = 0; j < numOfCmd; j++) {
+            for (int i = 0; i < 2; i++)
+            {
+                res[i] = charToDigit(argv[j*3+3][i]);
+            }
+            delay = res[0] << 4 | res[1];
+            for (int i = 0; i < 2; i++)
+            {
+                res[i] = charToDigit(argv[j*3+4][i]);
+            }
+            addr = res[0] << 4 | res[1];
 
-        for (int i = 0; i < 2; i++)
-        {
-            res[i] = charToDigit(argv[5][i]);
+            for (int i = 0; i < 2; i++)
+            {
+                res[i] = charToDigit(argv[j*3+5][i]);
+            }
+            data = res[0] << 4 | res[1];
+            txBuffer[j*3+2] = delay;
+            txBuffer[j*3+3] = addr;
+            txBuffer[j*3+4] = data;
         }
-        data = res[0] << 4 | res[1];
-        txBuffer[2] = delay;
-        txBuffer[3] = addr;
-        txBuffer[4] = data;
 
         totalBytes = 1 + 1 + 3 * numOfCmd + 2;  // cmd + num + cmd bytes + 2 stop bytes 
         break;
@@ -228,6 +230,14 @@ int main(int argc, char **argv)
         break;
     }
 
+
+    printf("\r\ntxBuffer size: %d\r\n", totalBytes);
+    for (int i = 0; i < totalBytes; i++)
+    {
+        printf("%d ", txBuffer[i]);
+    }
+    printf("\r\n");
+
     // Open the device file for writing
     int ttyRPMSG0 = open(deviceFile, O_WRONLY);
 
@@ -238,12 +248,6 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    printf("\r\ntxBuffer size: %d\r\n", totalBytes);
-    for (int i = 0; i < totalBytes; i++)
-    {
-        printf("%d ", txBuffer[i]);
-    }
-    printf("\r\n");
     // Write the buffer to the device file
     ssize_t bytesWritten = write(ttyRPMSG0, txBuffer, totalBytes); // first byte, + 2 * 0xFF stop bytes
 
