@@ -58,6 +58,7 @@ int main(int argc, char **argv)
     long timeArray[TIMING_LIST_SIZE] = {0xFFFF};
     unsigned char txBuffer[256] = {[0 ... 255] = 0xFF};
     int counter = 0;
+    int totalBytes = 0;
 
     // print args
     printf("argc: %d\r\n", argc);
@@ -86,38 +87,75 @@ int main(int argc, char **argv)
     }
 
     int cmd = atoi(argv[1]);
+    int res[2];
     txBuffer[0] = (char)cmd;
+    char delay = '0';
+    char addr = '0';
+    char data = '0';
 
     switch (cmd)
     {
     case TYPE_DALI_COMMAND:
-        if (argc < 4)
+        if (argc < 5)
         {
-            printf("TYPE_DALI_COMMAND Usage: send.out 2 ADDR(hex) VAL(hex)\r\nexample: ./send.out 2 FF 91\r\n");
+            printf("TYPE_DALI_COMMAND Usage: send.out 2 Delay(hex) ADDR(hex) DATA(hex)\r\nexample: ./send.out 2 FF 91\r\n");
             return -1;
         }
-        counter = 0;
-        int res[2];
-        char addr = '0';
-        char val = '0';
+        // convert char input to digit
         for (int i = 0; i < 2; i++)
         {
             res[i] = charToDigit(argv[2][i]);
-            
+        }
+        delay = res[0] << 4 | res[1];
+
+        for (int i = 0; i < 2; i++)
+        {
+            res[i] = charToDigit(argv[3][i]);
         }
         addr = res[0] << 4 | res[1];
 
         for (int i = 0; i < 2; i++)
         {
-            res[i] = charToDigit(argv[3][i]);
-            
+            res[i] = charToDigit(argv[4][i]);
         }
-        val = res[0] << 4 | res[1];
+        data = res[0] << 4 | res[1];
 
-        printf("addr: %d, val: %d\r\n", addr, val);
-        txBuffer[counter * 2 + 1] = addr;
-        txBuffer[counter * 2 + 2] = val;
-        counter = 1;
+        printf("delay: %d, addr: %d, val: %d\r\n", delay, addr, data);
+        txBuffer[1] = delay;
+        txBuffer[2] = addr;
+        txBuffer[3] = data;
+        totalBytes = 4 + 2; // 4 command + 2 stop bytes
+        break;
+    case TYPE_DALI_COMMAND_SEQUENCE:
+        if (argc < 6)
+        {
+            printf("TYPE_DALI_COMMAND Usage: sendCmd.out 4 numOfCmd Delay(hex) ADDR(hex) Data(hex)...\r\nexample: ./sendCmd.out 4 3 00 C1 01 00 FF FC 00 FF FC\r\n");
+            return -1;
+        }
+        int numOfCmd = atoi(argv[2]);
+        txBuffer[1] = (char)numOfCmd;
+
+        for (int i = 0; i < 2; i++)
+        {
+            res[i] = charToDigit(argv[3][i]);
+        }
+        delay = res[0] << 4 | res[1];
+        for (int i = 0; i < 2; i++)
+        {
+            res[i] = charToDigit(argv[4][i]);
+        }
+        addr = res[0] << 4 | res[1];
+
+        for (int i = 0; i < 2; i++)
+        {
+            res[i] = charToDigit(argv[5][i]);
+        }
+        data = res[0] << 4 | res[1];
+        txBuffer[2] = delay;
+        txBuffer[3] = addr;
+        txBuffer[4] = data;
+
+        totalBytes = 1 + 1 + 3 * numOfCmd + 2;  // cmd + num + cmd bytes + 2 stop bytes 
         break;
     case TYPE_LOAD_DATA_TIMING_LIST:
         if (argc == 2)
@@ -196,18 +234,18 @@ int main(int argc, char **argv)
     // Check for errors in opening the file
     if (ttyRPMSG0 == -1)
     {
-        perror("Error opening ttyRPMSG0");
+        printf("Error opening ttyRPMSG0\r\n");
         return -1;
     }
 
-    printf("\r\ncounter: %d, txBuffer size: %d\r\n", counter, (1 + counter * 2));
-    for (int i = 0; i < 3 + counter * 2; i++)
+    printf("\r\ntxBuffer size: %d\r\n", totalBytes);
+    for (int i = 0; i < totalBytes; i++)
     {
         printf("%d ", txBuffer[i]);
     }
     printf("\r\n");
     // Write the buffer to the device file
-    ssize_t bytesWritten = write(ttyRPMSG0, txBuffer, (3 + counter * 2)); // first byte, + 2 * 0xFF stop bytes
+    ssize_t bytesWritten = write(ttyRPMSG0, txBuffer, totalBytes); // first byte, + 2 * 0xFF stop bytes
 
     // Check for errors in writing to the file
     if (bytesWritten == -1)
