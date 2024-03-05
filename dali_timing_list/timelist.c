@@ -92,9 +92,14 @@ int main(int argc, char **argv)
     char delay = '0';
     char addr = '0';
     char data = '0';
+    char tmp = '0';
 
     switch (cmd)
     {
+    case TYPE_NOTHING:
+    case TYPE_PING:
+        totalBytes = 1;
+        break;
     case TYPE_DALI_COMMAND:
         if (argc < 5)
         {
@@ -135,32 +140,53 @@ int main(int argc, char **argv)
         int numOfCmd = atoi(argv[2]);
         txBuffer[1] = (char)numOfCmd;
 
-        for(int j = 0; j < numOfCmd; j++) {
+        for (int j = 0; j < numOfCmd; j++)
+        {
             for (int i = 0; i < 2; i++)
             {
-                res[i] = charToDigit(argv[j*3+3][i]);
+                res[i] = charToDigit(argv[j * 3 + 3][i]);
             }
             delay = res[0] << 4 | res[1];
             for (int i = 0; i < 2; i++)
             {
-                res[i] = charToDigit(argv[j*3+4][i]);
+                res[i] = charToDigit(argv[j * 3 + 4][i]);
             }
             addr = res[0] << 4 | res[1];
 
             for (int i = 0; i < 2; i++)
             {
-                res[i] = charToDigit(argv[j*3+5][i]);
+                res[i] = charToDigit(argv[j * 3 + 5][i]);
             }
             data = res[0] << 4 | res[1];
-            txBuffer[j*3+2] = delay;
-            txBuffer[j*3+3] = addr;
-            txBuffer[j*3+4] = data;
+            txBuffer[j * 3 + 2] = delay;
+            txBuffer[j * 3 + 3] = addr;
+            txBuffer[j * 3 + 4] = data;
         }
 
-        totalBytes = 1 + 1 + 3 * numOfCmd + 2;  // cmd + num + cmd bytes + 2 stop bytes 
+        totalBytes = 1 + 1 + 3 * numOfCmd + 2; // cmd + num + cmd bytes + 2 stop bytes
+        break;
+    case TYPE_PING_DELAY:
+        if (argc != 4)
+        {
+            printf("TYPE_PING_DELAY Usage: sendCmd.out 5 HiByte(hex) LoByte(hex)\r\nexample: ./sendCmd.out 5 00 32) - delay 50ms \r\n");
+            return -1;
+        }
+        for (int i = 0; i < 2; i++)
+        {
+            res[i] = charToDigit(argv[2][i]);
+        }
+        tmp = res[0] << 4 | res[1];
+        txBuffer[1] = tmp;
+        for (int i = 0; i < 2; i++)
+        {
+            res[i] = charToDigit(argv[3][i]);
+        }
+        tmp = res[0] << 4 | res[1];
+        txBuffer[2] = tmp;
+        totalBytes = 3;
         break;
     case TYPE_LOAD_DATA_TIMING_LIST:
-        if (argc == 2)
+        if (argc < 3)
         {
             printf("please select a file to load timing list, example: ./send.out 8 ./test.txt\r\n");
             return -1;
@@ -229,7 +255,6 @@ int main(int argc, char **argv)
     default:
         break;
     }
-
 
     printf("\r\ntxBuffer size: %d\r\n", totalBytes);
     for (int i = 0; i < totalBytes; i++)
