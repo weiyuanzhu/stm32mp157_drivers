@@ -24,7 +24,8 @@ enum
     TYPE_SET_RECEIVE_TIMING_LIST, // Enable/Disable waveform capture vs. decoded protocol
     TYPE_READ_FLAGS,              // [DEBUG] Read DALI state machine flags
     TYPE_ENABLE_DEBUG_PACKETS,    // Enable/Disable the reception of debug data (state transitions)
-    TYPE_GET_FW_VERSION           // Request firmware version
+    TYPE_GET_FW_VERSION,          // Request firmware version
+    TYPE_DALI_COMMAND_DELAY       // Send command on the DALI bus with a delay(ms) to the next command
 };
 
 int charToDigit(char ch)
@@ -83,6 +84,7 @@ int main(int argc, char **argv)
         printf("10 - TYPE_READ_FLAGS \r\n");
         printf("11 - TYPE_ENABLE_DEBUG_PACKETS \r\n");
         printf("12 - TYPE_GET_FW_VERSION \r\n");
+        printf("13 - TYPE_DALI_COMMAND_DELAY \r\n");
         return -1;
     }
 
@@ -101,35 +103,28 @@ int main(int argc, char **argv)
         totalBytes = 1;
         break;
     case TYPE_DALI_COMMAND:
-        if (argc < 5)
+        if (argc < 4)
         {
-            printf("TYPE_DALI_COMMAND Usage: send.out 2 Delay(hex) ADDR(hex) DATA(hex)\r\nexample: ./send.out 2 FF 91\r\n");
+            printf("TYPE_DALI_COMMAND Usage: send.out 2 ADDR(hex) DATA(hex)\r\nexample: ./send.out 2 FF 91\r\n");
             return -1;
         }
-        // convert char input to digit
-        for (int i = 0; i < 2; i++)
-        {
-            res[i] = charToDigit(argv[2][i]);
-        }
-        delay = res[0] << 4 | res[1];
 
         for (int i = 0; i < 2; i++)
         {
-            res[i] = charToDigit(argv[3][i]);
+            res[i] = charToDigit(argv[2][i]);
         }
         addr = res[0] << 4 | res[1];
 
         for (int i = 0; i < 2; i++)
         {
-            res[i] = charToDigit(argv[4][i]);
+            res[i] = charToDigit(argv[3][i]);
         }
         data = res[0] << 4 | res[1];
 
-        printf("delay: %d, addr: %d, val: %d\r\n", delay, addr, data);
-        txBuffer[1] = delay;
-        txBuffer[2] = addr;
-        txBuffer[3] = data;
-        totalBytes = 4 + 2; // 4 command + 2 stop bytes
+        printf("addr: %d, val: %d\r\n", addr, data);
+        txBuffer[1] = addr;
+        txBuffer[2] = data;
+        totalBytes = 3 + 2; // 3 command + 2 stop bytes
         break;
     case TYPE_DALI_COMMAND_SEQUENCE:
         if (argc < 6)
@@ -251,6 +246,38 @@ int main(int argc, char **argv)
 
             printf("]\r\n");
         }
+        break;
+    case TYPE_DALI_COMMAND_DELAY:
+        if (argc < 4)
+        {
+            printf("TYPE_DALI_COMMAND Usage: send.out 2 ADDR(hex) DATA(hex)\r\nexample: ./send.out 2 FF 91\r\n");
+            return -1;
+        }
+        // convert char input to digit
+        for (int i = 0; i < 2; i++)
+        {
+            res[i] = charToDigit(argv[2][i]);
+        }
+        delay = res[0] << 4 | res[1];
+
+        for (int i = 0; i < 2; i++)
+        {
+            res[i] = charToDigit(argv[3][i]);
+        }
+        addr = res[0] << 4 | res[1];
+
+        for (int i = 0; i < 2; i++)
+        {
+            res[i] = charToDigit(argv[4][i]);
+        }
+        data = res[0] << 4 | res[1];
+
+        printf("delay: %d, addr: %d, val: %d\r\n", delay, addr, data);
+        txBuffer[1] = delay;
+        txBuffer[2] = addr;
+        txBuffer[3] = data;
+        totalBytes = 4 + 2; // 4 command + 2 stop bytes
+        break;
         break;
     default:
         break;
